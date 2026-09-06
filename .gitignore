@@ -1,0 +1,33 @@
+# Environnement
+.env
+*.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Flutter / Dart
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/build/
+mobile/.packages
+
+# IA / datasets / modèles (ne jamais committer de gros fichiers ici)
+ai/data/
+ai/models/*.pt
+ai/models/*.onnx
+*.mp4
+*.avi
+
+# Docker
+*.log
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
