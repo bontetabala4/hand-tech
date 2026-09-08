@@ -1,0 +1,10 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E, F : erreurs de style et de logique de base (pyflakes + pycodestyle).
+# On reste volontairement simple au demarrage du projet ; on pourra
+# elargir (I pour le tri des imports, UP pour la modernisation, etc.)
+# une fois l'equipe habituee au lint.
+select = ["E", "F"]

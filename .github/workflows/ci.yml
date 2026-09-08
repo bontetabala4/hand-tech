@@ -28,5 +28,20 @@ jobs:
       - name: Installation des dépendances
         run: pip install -r requirements.txt
 
+      - name: Lint (ruff)
+        run: |
+          pip install ruff
+          ruff check .
+
       - name: Lancement des tests
         run: pytest -v
+
+  build-docker-image:
+    runs-on: ubuntu-latest
+    needs: test-backend
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+
+      - name: Construction de l'image Docker du backend
+        run: docker build -t hand-tech-backend:ci ./backend
