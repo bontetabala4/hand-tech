@@ -1,0 +1,51 @@
+services:
+  backend:
+    build: ./backend
+    container_name: handtech-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - handtech-network
+
+  db:
+    image: postgres:16-alpine
+    container_name: handtech-db
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - handtech-db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+    networks:
+      - handtech-network
+
+  # Placeholder : service IA à implémenter par le Dev IA (ticket à créer).
+  # Décommenter une fois le Dockerfile ai/ disponible.
+  # ai-service:
+  #   build: ./ai
+  #   container_name: handtech-ai
+  #   ports:
+  #     - "8001:8001"
+  #   networks:
+  #     - handtech-network
+
+networks:
+  handtech-network:
+    driver: bridge
+
+volumes:
+  handtech-db-data:
