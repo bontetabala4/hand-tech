@@ -5,9 +5,14 @@ import '../data/models/glasses_device.dart';
 import '../data/models/glasses_device_status.dart';
 import '../data/repositories/glasses_pairing_repository.dart';
 import '../data/repositories/mock_glasses_pairing_repository.dart';
+import '../data/repositories/ble_glasses_pairing_repository.dart';
 
 final pairingRepositoryProvider = Provider<GlassesPairingRepository>((ref) {
   return MockGlassesPairingRepository();
+});
+
+final blePairingRepositoryProvider = Provider<BleGlassesPairingRepository>((ref) {
+  return BleGlassesPairingRepository();
 });
 
 enum PairingStatus {

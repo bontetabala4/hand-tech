@@ -4,9 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/repositories/camera_stream_repository.dart';
 import '../data/repositories/mock_camera_stream_repository.dart';
+import '../data/repositories/native_camera_stream_repository.dart';
 
 final cameraRepositoryProvider = Provider<CameraStreamRepository>((ref) {
   return MockCameraStreamRepository();
+});
+
+final nativeCameraRepositoryProvider = Provider<NativeCameraStreamRepository>((ref) {
+  return NativeCameraStreamRepository();
 });
 
 enum CameraStatus {
