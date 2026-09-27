@@ -21,11 +21,17 @@ class _CameraPreviewPipState extends ConsumerState<CameraPreviewPip> {
     final targetWidth = cameraState.isExpanded ? (size.width * 0.7) : (size.width * 0.25);
     final targetHeight = targetWidth * 1.5;
 
-    return GestureDetector(
-      onTap: () {
-        ref.read(cameraProvider.notifier).togglePiP();
-      },
-      child: AnimatedContainer(
+    return Semantics(
+      button: true,
+      label: cameraState.isExpanded
+          ? 'Expanded camera preview overlay'
+          : 'Collapsed camera preview overlay',
+      hint: 'Double tap to toggle picture in picture size',
+      child: GestureDetector(
+        onTap: () {
+          ref.read(cameraProvider.notifier).togglePiP();
+        },
+        child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         width: targetWidth,
@@ -102,6 +108,7 @@ class _CameraPreviewPipState extends ConsumerState<CameraPreviewPip> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }

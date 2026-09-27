@@ -6,6 +6,8 @@ import '../data/models/glasses_device_status.dart';
 import '../data/repositories/glasses_pairing_repository.dart';
 import '../data/repositories/mock_glasses_pairing_repository.dart';
 import '../data/repositories/ble_glasses_pairing_repository.dart';
+import '../data/services/haptic_feedback_service.dart';
+import 'hardware_providers.dart';
 
 final pairingRepositoryProvider = Provider<GlassesPairingRepository>((ref) {
   return MockGlassesPairingRepository();
@@ -58,6 +60,7 @@ class PairingState {
 
 class PairingNotifier extends StateNotifier<PairingState> {
   final GlassesPairingRepository _repository;
+  final HapticFeedbackService? _hapticService;
   
   StreamSubscription<List<GlassesDevice>>? _scanSub;
   StreamSubscription<GlassesDeviceStatus>? _telemetrySub;
@@ -65,7 +68,9 @@ class PairingNotifier extends StateNotifier<PairingState> {
   int _reconnectAttempts = 0;
   final int _maxReconnectAttempts = 3;
 
-  PairingNotifier(this._repository) : super(PairingState());
+  PairingNotifier(this._repository, {HapticFeedbackService? hapticService})
+      : _hapticService = hapticService,
+        super(PairingState());
 
   void startScanning() {
     state = state.copyWith(status: PairingStatus.scanning, clearError: true);
@@ -188,6 +193,7 @@ class PairingNotifier extends StateNotifier<PairingState> {
   }
 
   void _handleConnectionError(Object error) {
+    _hapticService?.errorNotification();
     String msg = "Connection failed.";
     if (error is BleTimeoutException) {
       msg = error.message;
@@ -216,5 +222,6 @@ class PairingNotifier extends StateNotifier<PairingState> {
 
 final pairingProvider = StateNotifierProvider<PairingNotifier, PairingState>((ref) {
   final repository = ref.watch(pairingRepositoryProvider);
-  return PairingNotifier(repository);
+  final hapticService = ref.watch(hapticServiceProvider);
+  return PairingNotifier(repository, hapticService: hapticService);
 });

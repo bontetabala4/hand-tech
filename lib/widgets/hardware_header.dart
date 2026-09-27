@@ -22,34 +22,43 @@ class HardwareHeader extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Battery
-              Row(
-                children: [
-                  Icon(
-                    batteryLevel > 20 ? Icons.battery_full : Icons.battery_alert,
-                    color: AppTheme.textPrimary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '$batteryLevel%',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
+              Semantics(
+                label: 'Smart Glasses battery level: $batteryLevel percent',
+                child: Row(
+                  children: [
+                    Icon(
+                      batteryLevel > 20 ? Icons.battery_full : Icons.battery_alert,
+                      color: AppTheme.textPrimary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$batteryLevel%',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
               ),
               // Signal / Connectivity
               Row(
                 children: [
-                  Icon(
-                    isBluetoothConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
-                    color: isBluetoothConnected ? AppTheme.statusConnected : AppTheme.statusDisconnected,
-                    size: 20,
+                  Semantics(
+                    label: isBluetoothConnected ? 'Bluetooth connected' : 'Bluetooth disconnected',
+                    child: Icon(
+                      isBluetoothConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
+                      color: isBluetoothConnected ? AppTheme.statusConnected : AppTheme.statusDisconnected,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   // Camera Status
-                  Icon(
-                    Icons.videocam,
-                    color: isCameraActive ? AppTheme.statusConnected : AppTheme.statusWarning,
-                    size: 20,
+                  Semantics(
+                    label: isCameraActive ? 'Camera active' : 'Camera inactive',
+                    child: Icon(
+                      Icons.videocam,
+                      color: isCameraActive ? AppTheme.statusConnected : AppTheme.statusWarning,
+                      size: 20,
+                    ),
                   ),
                 ],
               ),
@@ -57,23 +66,31 @@ class HardwareHeader extends ConsumerWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.settings, color: AppTheme.accentBlue),
-                    onPressed: () {
-                      // TODO: Navigate to pairing/settings
-                    },
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+                  Semantics(
+                    button: true,
+                    label: 'Pairing and device settings',
+                    hint: 'Opens Bluetooth smart glasses pairing settings',
+                    child: IconButton(
+                      icon: const Icon(Icons.settings, color: AppTheme.accentBlue),
+                      onPressed: () {},
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
                   ),
                   const SizedBox(width: 16),
-                  IconButton(
-                    icon: const Icon(Icons.power_settings_new, color: AppTheme.statusDisconnected),
-                    onPressed: () {
-                      ref.read(authStateProvider.notifier).signOut();
-                    },
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    tooltip: 'Logout',
+                  Semantics(
+                    button: true,
+                    label: 'Logout from Hand Tech',
+                    hint: 'Signs out of current user session',
+                    child: IconButton(
+                      icon: const Icon(Icons.power_settings_new, color: AppTheme.statusDisconnected),
+                      onPressed: () {
+                        ref.read(authStateProvider.notifier).signOut();
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Logout',
+                    ),
                   ),
                 ],
               ),

@@ -5,6 +5,9 @@ import '../data/repositories/translation_repository.dart';
 import '../data/repositories/mock_translation_repository.dart';
 import '../data/repositories/websocket_translation_repository.dart';
 import '../data/repositories/translation_history_repository.dart';
+import '../data/services/haptic_feedback_service.dart';
+import '../data/services/tts_service.dart';
+import 'hardware_providers.dart';
 
 final translationRepositoryProvider = Provider<TranslationRepository>((ref) {
   return MockTranslationRepository();
@@ -61,15 +64,29 @@ class TranslationState {
 
 class TranslationNotifier extends StateNotifier<TranslationState> {
   final TranslationRepository _repository;
+  final HapticFeedbackService? _hapticService;
+  final TtsService? _ttsService;
   StreamSubscription? _subscription;
 
-  TranslationNotifier(this._repository) : super(TranslationState());
+  TranslationNotifier(
+    this._repository, {
+    HapticFeedbackService? hapticService,
+    TtsService? ttsService,
+  })  : _hapticService = hapticService,
+        _ttsService = ttsService,
+        super(TranslationState());
 
   void toggleTranslation() {
     if (state.status == TranslationStatus.listening || state.status == TranslationStatus.translating) {
       pauseTranslation();
     } else {
       startTranslation();
+    }
+  }
+
+  Future<void> speakCurrentText() async {
+    if (state.liveText.isNotEmpty) {
+      await _ttsService?.speak(state.liveText);
     }
   }
 
@@ -87,6 +104,10 @@ class TranslationNotifier extends StateNotifier<TranslationState> {
       _subscription?.cancel();
       _subscription = _repository.streamTranslations().listen(
         (frame) {
+          if (frame.confidenceScore < 0.7) {
+            _hapticService?.warningNotification();
+          }
+
           state = state.copyWith(
             status: TranslationStatus.translating,
             liveText: frame.recognizedText,
@@ -103,6 +124,7 @@ class TranslationNotifier extends StateNotifier<TranslationState> {
           }
         },
         onError: (error) {
+          _hapticService?.errorNotification();
           state = state.copyWith(
             status: TranslationStatus.error,
             errorMessage: "Connection error. Reconnecting...",
@@ -114,6 +136,7 @@ class TranslationNotifier extends StateNotifier<TranslationState> {
         }
       );
     } catch (e) {
+      _hapticService?.errorNotification();
       state = state.copyWith(
         status: TranslationStatus.error,
         errorMessage: "Failed to start translation.",
@@ -141,11 +164,14 @@ class TranslationNotifier extends StateNotifier<TranslationState> {
   void dispose() {
     _subscription?.cancel();
     _repository.stopTranslation();
+    _ttsService?.stop();
     super.dispose();
   }
 }
 
 final translationProvider = StateNotifierProvider<TranslationNotifier, TranslationState>((ref) {
   final repo = ref.watch(translationRepositoryProvider);
-  return TranslationNotifier(repo);
+  final haptics = ref.watch(hapticServiceProvider);
+  final tts = ref.watch(ttsServiceProvider);
+  return TranslationNotifier(repo, hapticService: haptics, ttsService: tts);
 });

@@ -4,9 +4,35 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:hand_tech/data/models/translation_frame.dart';
 import 'package:hand_tech/data/repositories/translation_repository.dart';
+import 'package:hand_tech/data/services/haptic_feedback_service.dart';
+import 'package:hand_tech/data/services/tts_service.dart';
+import 'package:hand_tech/providers/hardware_providers.dart';
 import 'package:hand_tech/providers/translation_provider.dart';
 
 class MockTranslationRepository extends Mock implements TranslationRepository {}
+
+/// No-op haptic service — avoids platform channel in tests.
+class _FakeHapticService implements HapticFeedbackService {
+  @override Future<void> selectionClick() async {}
+  @override Future<void> successNotification() async {}
+  @override Future<void> warningNotification() async {}
+  @override Future<void> errorNotification() async {}
+}
+
+/// No-op TTS service — avoids FlutterTts platform channel in tests.
+class _FakeTtsService implements TtsService {
+  @override Future<void> speak(String text) async {}
+  @override Future<void> stop() async {}
+  @override Future<void> setLanguage(String langCode) async {}
+  @override Future<void> setSpeechRate(double rate) async {}
+}
+
+/// Shared overrides injected into every container in this file.
+List<Override> _baseOverrides(MockTranslationRepository repo) => [
+      translationRepositoryProvider.overrideWithValue(repo),
+      hapticServiceProvider.overrideWithValue(_FakeHapticService()),
+      ttsServiceProvider.overrideWithValue(_FakeTtsService()),
+    ];
 
 void main() {
   late MockTranslationRepository mockRepository;
@@ -29,11 +55,7 @@ void main() {
 
   group('TranslationNotifier Tests', () {
     test('Initial state is idle', () {
-      final container = ProviderContainer(
-        overrides: [
-          translationRepositoryProvider.overrideWithValue(mockRepository),
-        ],
-      );
+      final container = ProviderContainer(overrides: _baseOverrides(mockRepository));
       addTearDown(container.dispose);
 
       final state = container.read(translationProvider);
@@ -45,11 +67,7 @@ void main() {
     });
 
     test('Toggling translation starts listening/translating or pauses translation', () async {
-      final container = ProviderContainer(
-        overrides: [
-          translationRepositoryProvider.overrideWithValue(mockRepository),
-        ],
-      );
+      final container = ProviderContainer(overrides: _baseOverrides(mockRepository));
       addTearDown(container.dispose);
 
       final notifier = container.read(translationProvider.notifier);
@@ -70,11 +88,7 @@ void main() {
     });
 
     test('Text buffer is retained when translation is paused', () async {
-      final container = ProviderContainer(
-        overrides: [
-          translationRepositoryProvider.overrideWithValue(mockRepository),
-        ],
-      );
+      final container = ProviderContainer(overrides: _baseOverrides(mockRepository));
       addTearDown(container.dispose);
 
       final notifier = container.read(translationProvider.notifier);
@@ -101,11 +115,7 @@ void main() {
     });
 
     test('Confidence score updating and frame processing', () async {
-      final container = ProviderContainer(
-        overrides: [
-          translationRepositoryProvider.overrideWithValue(mockRepository),
-        ],
-      );
+      final container = ProviderContainer(overrides: _baseOverrides(mockRepository));
       addTearDown(container.dispose);
 
       final notifier = container.read(translationProvider.notifier);

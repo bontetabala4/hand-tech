@@ -6,9 +6,25 @@ import 'package:mocktail/mocktail.dart';
 import 'package:hand_tech/data/models/glasses_device.dart';
 import 'package:hand_tech/data/models/glasses_device_status.dart';
 import 'package:hand_tech/data/repositories/glasses_pairing_repository.dart';
+import 'package:hand_tech/data/services/haptic_feedback_service.dart';
+import 'package:hand_tech/providers/hardware_providers.dart';
 import 'package:hand_tech/providers/pairing_provider.dart';
 
 class MockGlassesPairingRepository extends Mock implements GlassesPairingRepository {}
+
+/// No-op haptic service — avoids HapticFeedback platform channel in tests.
+class _FakeHapticService implements HapticFeedbackService {
+  @override Future<void> selectionClick() async {}
+  @override Future<void> successNotification() async {}
+  @override Future<void> warningNotification() async {}
+  @override Future<void> errorNotification() async {}
+}
+
+/// Shared overrides for every container in this file.
+List<Override> _baseOverrides(MockGlassesPairingRepository repo) => [
+      pairingRepositoryProvider.overrideWithValue(repo),
+      hapticServiceProvider.overrideWithValue(_FakeHapticService()),
+    ];
 
 void main() {
   late MockGlassesPairingRepository mockRepository;
@@ -42,11 +58,7 @@ void main() {
 
   group('PairingNotifier Tests', () {
     test('Initial scan / unpaired state', () {
-      final container = ProviderContainer(
-        overrides: [
-          pairingRepositoryProvider.overrideWithValue(mockRepository),
-        ],
-      );
+      final container = ProviderContainer(overrides: _baseOverrides(mockRepository));
       addTearDown(container.dispose);
 
       final state = container.read(pairingProvider);
@@ -58,11 +70,7 @@ void main() {
     });
 
     test('Start scanning updates status to scanning and emits scanned devices', () async {
-      final container = ProviderContainer(
-        overrides: [
-          pairingRepositoryProvider.overrideWithValue(mockRepository),
-        ],
-      );
+      final container = ProviderContainer(overrides: _baseOverrides(mockRepository));
       addTearDown(container.dispose);
 
       final notifier = container.read(pairingProvider.notifier);
@@ -82,11 +90,7 @@ void main() {
       when(() => mockRepository.connectToDevice('device_001'))
           .thenThrow(BleTimeoutException('Connection timed out after 15 seconds.'));
 
-      final container = ProviderContainer(
-        overrides: [
-          pairingRepositoryProvider.overrideWithValue(mockRepository),
-        ],
-      );
+      final container = ProviderContainer(overrides: _baseOverrides(mockRepository));
       addTearDown(container.dispose);
 
       final notifier = container.read(pairingProvider.notifier);
@@ -100,15 +104,11 @@ void main() {
 
     test('Connection timeout handling triggers after 15 seconds timer', () {
       fakeAsync((async) {
-        // Mock connection call that never completes or takes long
+        // Mock connection call that never completes
         when(() => mockRepository.connectToDevice('device_001'))
             .thenAnswer((_) => Completer<bool>().future);
 
-        final container = ProviderContainer(
-          overrides: [
-            pairingRepositoryProvider.overrideWithValue(mockRepository),
-          ],
-        );
+        final container = ProviderContainer(overrides: _baseOverrides(mockRepository));
 
         final notifier = container.read(pairingProvider.notifier);
         notifier.connect(testDevice);
@@ -132,11 +132,7 @@ void main() {
         when(() => mockRepository.connectToDevice('device_001'))
             .thenAnswer((_) async => true);
 
-        final container = ProviderContainer(
-          overrides: [
-            pairingRepositoryProvider.overrideWithValue(mockRepository),
-          ],
-        );
+        final container = ProviderContainer(overrides: _baseOverrides(mockRepository));
 
         final notifier = container.read(pairingProvider.notifier);
         notifier.connect(testDevice);
@@ -180,7 +176,7 @@ void main() {
         async.elapse(const Duration(seconds: 8));
         async.flushMicrotasks();
 
-        // Emitting error in telemetry stream after max attempts -> max reconnect attempts reached
+        // Emitting error after max attempts -> max reconnect attempts reached
         telemetryStreamController.addError(Exception('BLE connection lost'));
         async.flushMicrotasks();
 

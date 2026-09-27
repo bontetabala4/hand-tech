@@ -12,21 +12,26 @@ class LiveTranscriptionView extends ConsumerWidget {
     final text = translationState.liveText;
     final isUncertain = translationState.lastConfidence < 0.8 || !translationState.isFinal;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-      child: SingleChildScrollView(
-        reverse: true, // Auto-scroll to bottom
-        child: RichText(
-          text: TextSpan(
-            style: const TextStyle(
-              fontFamily: 'Inter', // Fallback to system sans-serif if not loaded
-              fontSize: 34,
-              color: AppTheme.textPrimary,
-              height: 1.4,
-              fontWeight: FontWeight.w500,
+    return Semantics(
+      liveRegion: true,
+      label: 'Live transcription output: ${text.isEmpty ? "Waiting for sign language input..." : text}',
+      hint: isUncertain ? 'Low confidence translation detected' : 'High confidence translation',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+        child: SingleChildScrollView(
+          reverse: true, // Auto-scroll to bottom
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(
+                fontFamily: 'Inter', // Fallback to system sans-serif if not loaded
+                fontSize: 34,
+                color: AppTheme.textPrimary,
+                height: 1.4,
+                fontWeight: FontWeight.w500,
+              ),
+              children: _buildTranscriptionSpans(text, isUncertain),
             ),
-            children: _buildTranscriptionSpans(text, isUncertain),
           ),
         ),
       ),

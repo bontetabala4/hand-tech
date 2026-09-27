@@ -29,44 +29,57 @@ class AudioControlBar extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Audio Output Toggle
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isAudioToGlasses ? Icons.headphones : Icons.speaker_phone,
-                color: AppTheme.textSecondary,
-              ),
-              Switch(
-                value: isAudioToGlasses,
-                activeThumbColor: AppTheme.accentBlue,
-                onChanged: (val) {
-                  HapticFeedback.lightImpact();
-                  ref.read(isAudioOutputToGlassesProvider.notifier).state = val;
-                },
-              ),
-            ],
-          ),
-          
-          // Central FAB (Translation Toggle)
-          FloatingActionButton(
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              ref.read(translationProvider.notifier).toggleTranslation();
-            },
-            child: Icon(
-              isListening ? Icons.pause : Icons.play_arrow,
+          Semantics(
+            label: isAudioToGlasses ? 'Audio output set to Smart Glasses' : 'Audio output set to Phone Speaker',
+            hint: 'Double tap to toggle audio destination',
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isAudioToGlasses ? Icons.headphones : Icons.speaker_phone,
+                  color: AppTheme.textSecondary,
+                ),
+                Switch(
+                  value: isAudioToGlasses,
+                  activeThumbColor: AppTheme.accentBlue,
+                  onChanged: (val) {
+                    HapticFeedback.lightImpact();
+                    ref.read(isAudioOutputToGlassesProvider.notifier).state = val;
+                  },
+                ),
+              ],
             ),
           ),
           
-          // Replay Button
-          IconButton(
-            icon: const Icon(Icons.replay),
-            color: AppTheme.textSecondary,
-            iconSize: 28,
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              // Trigger replay logic here
-            },
+          // Central FAB (Translation Toggle)
+          Semantics(
+            button: true,
+            label: isListening ? 'Pause translation stream' : 'Start real-time sign language translation',
+            child: FloatingActionButton(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                ref.read(translationProvider.notifier).toggleTranslation();
+              },
+              child: Icon(
+                isListening ? Icons.pause : Icons.play_arrow,
+              ),
+            ),
+          ),
+          
+          // Replay / Speech synthesis Button
+          Semantics(
+            button: true,
+            label: 'Read out translation using text to speech',
+            hint: 'Synthesizes audio speech of the current translation text',
+            child: IconButton(
+              icon: const Icon(Icons.volume_up),
+              color: AppTheme.textSecondary,
+              iconSize: 28,
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                ref.read(translationProvider.notifier).speakCurrentText();
+              },
+            ),
           ),
         ],
       ),
