@@ -2,9 +2,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/user_model.dart';
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/mock_auth_repository.dart';
+import '../data/services/secure_storage_service.dart';
+
+final secureStorageServiceProvider = Provider<SecureStorageService>((ref) {
+  return FlutterSecureStorageService();
+});
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return MockAuthRepository();
+  final storageService = ref.watch(secureStorageServiceProvider);
+  return MockAuthRepository(storageService: storageService);
 });
 
 final authStateProvider = StateNotifierProvider<AuthNotifier, AsyncValue<User?>>((ref) {
@@ -34,7 +40,6 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
       final user = await _authRepository.signInWithEmailAndPassword(email, password);
       state = AsyncValue.data(user);
     } catch (e, stack) {
-      // Keep the current state (or null) and throw to let the UI handle the error
       state = AsyncValue.error(e, stack);
       rethrow;
     }

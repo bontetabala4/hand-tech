@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/repositories/translation_repository.dart';
 import '../data/repositories/mock_translation_repository.dart';
 import '../data/repositories/websocket_translation_repository.dart';
+import '../data/repositories/translation_history_repository.dart';
 
 final translationRepositoryProvider = Provider<TranslationRepository>((ref) {
   return MockTranslationRepository();
@@ -11,6 +12,10 @@ final translationRepositoryProvider = Provider<TranslationRepository>((ref) {
 
 final webSocketTranslationRepositoryProvider = Provider<WebSocketTranslationRepository>((ref) {
   return WebSocketTranslationRepository();
+});
+
+final translationHistoryRepositoryProvider = Provider<TranslationHistoryRepository>((ref) {
+  return SharedPreferencesTranslationHistoryRepository();
 });
 
 enum TranslationStatus {
