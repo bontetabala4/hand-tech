@@ -7,7 +7,7 @@ import '../providers/pairing_provider.dart';
 import 'glasses_dashboard_screen.dart';
 
 class GlassesPairingScreen extends ConsumerStatefulWidget {
-  const GlassesPairingScreen({Key? key}) : super(key: key);
+  const GlassesPairingScreen({super.key});
 
   @override
   ConsumerState<GlassesPairingScreen> createState() => _GlassesPairingScreenState();
@@ -265,7 +265,7 @@ class _GlassesPairingScreenState extends ConsumerState<GlassesPairingScreen> wit
               height: 150 * _pulseController.value,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF38BDF8).withOpacity(1 - _pulseController.value),
+                color: const Color(0xFF38BDF8).withValues(alpha: 1 - _pulseController.value),
               ),
             ),
             Container(
@@ -273,7 +273,7 @@ class _GlassesPairingScreenState extends ConsumerState<GlassesPairingScreen> wit
               height: 100 * ((_pulseController.value + 0.5) % 1.0),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF38BDF8).withOpacity(1 - ((_pulseController.value + 0.5) % 1.0)),
+                color: const Color(0xFF38BDF8).withValues(alpha: 1 - ((_pulseController.value + 0.5) % 1.0)),
               ),
             ),
             Container(

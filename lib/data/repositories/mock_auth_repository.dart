@@ -48,6 +48,6 @@ class MockAuthRepository implements AuthRepository {
   Future<User?> getCurrentUser() async {
     // Simulate checking secure storage for a token
     await Future.delayed(const Duration(milliseconds: 500));
-    return _currentUser;
+    return _mockToken != null ? _currentUser : null;
   }
 }

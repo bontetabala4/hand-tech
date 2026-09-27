@@ -10,21 +10,21 @@ class GlassesDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
+    return const Scaffold(
       body: SafeArea(
         child: Stack(
           children: [
             Column(
               children: [
-                const HardwareHeader(),
-                const Expanded(
+                HardwareHeader(),
+                Expanded(
                   child: LiveTranscriptionView(),
                 ),
-                const AudioControlBar(),
+                AudioControlBar(),
               ],
             ),
             // Floating Overlay (Camera Preview PiP)
-            const Positioned(
+            Positioned(
               top: 100,
               right: 16,
               child: CameraPreviewPip(),

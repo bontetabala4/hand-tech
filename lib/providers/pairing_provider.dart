@@ -88,11 +88,12 @@ class PairingNotifier extends StateNotifier<PairingState> {
   }
 
   Future<void> connect(GlassesDevice device) async {
+    final isReconnecting = _reconnectAttempts > 0;
     stopScanning();
     state = state.copyWith(
       status: PairingStatus.connecting,
       connectedDevice: device.copyWith(connectionStatus: ConnectionStatus.connecting),
-      clearError: true,
+      clearError: !isReconnecting,
     );
 
     _connectionTimeoutTimer?.cancel();
@@ -107,7 +108,9 @@ class PairingNotifier extends StateNotifier<PairingState> {
       _connectionTimeoutTimer?.cancel();
       
       if (success) {
-        _reconnectAttempts = 0;
+        if (!isReconnecting) {
+          _reconnectAttempts = 0;
+        }
         state = state.copyWith(
           status: PairingStatus.connected,
           connectedDevice: device.copyWith(connectionStatus: ConnectionStatus.connected),
@@ -166,6 +169,7 @@ class PairingNotifier extends StateNotifier<PairingState> {
   }
 
   void disconnect() {
+    _reconnectAttempts = 0;
     _repository.disconnect();
     _scanSub?.cancel();
     _telemetrySub?.cancel();
@@ -207,11 +211,5 @@ class PairingNotifier extends StateNotifier<PairingState> {
 
 final pairingProvider = StateNotifierProvider<PairingNotifier, PairingState>((ref) {
   final repository = ref.watch(pairingRepositoryProvider);
-  final notifier = PairingNotifier(repository);
-  
-  ref.onDispose(() {
-    notifier.dispose(); // This correctly cancels all streams
-  });
-  
-  return notifier;
+  return PairingNotifier(repository);
 });

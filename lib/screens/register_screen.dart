@@ -137,7 +137,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: _selectedSignLanguage,
+                    initialValue: _selectedSignLanguage,
                     dropdownColor: AppTheme.surfaceDarkColor,
                     decoration: _inputDecoration('Preferred Sign Language'),
                     style: const TextStyle(color: Colors.white),

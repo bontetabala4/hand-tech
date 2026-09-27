@@ -87,13 +87,13 @@ class CameraNotifier extends StateNotifier<CameraState> with WidgetsBindingObser
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState appState) {
-    if (appState == AppLifecycleState.paused || appState == AppLifecycleState.inactive) {
-      if (state.status == CameraStatus.streaming) {
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      if (this.state.status == CameraStatus.streaming) {
         pauseStream();
       }
-    } else if (appState == AppLifecycleState.resumed) {
-      if (state.status == CameraStatus.paused) {
+    } else if (state == AppLifecycleState.resumed) {
+      if (this.state.status == CameraStatus.paused) {
         startStream();
       }
     }
