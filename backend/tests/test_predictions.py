@@ -1,92 +1,52 @@
-"""
-Tests de l'endpoint de prédiction.
-
-Astuce importante : on ne teste PAS contre le vrai PostgreSQL de
-développement. On substitue la dépendance get_db par une base SQLite
-en mémoire, créée à chaque exécution des tests. Cela rend les tests
-rapides, reproductibles, et indépendants de Docker/PostgreSQL — ils
-passeront aussi bien en local que dans la CI GitHub Actions.
-"""
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-from fastapi.testclient import TestClient
-
-from app.main import app
-from app.models.database import Base, get_db
-from app.models import db_models  # noqa: F401  (enregistre les modèles sur Base)
-
-# StaticPool est indispensable ici : par défaut, SQLAlchemy ouvrirait une
-# nouvelle connexion SQLite à chaque requête, et "sqlite:///:memory:" crée
-# une base DIFFÉRENTE et vide à chaque nouvelle connexion. StaticPool force
-# la réutilisation d'une seule connexion, donc d'une seule base en mémoire,
-# partagée entre la création des tables et les requêtes des tests.
-engine = create_engine(
-    "sqlite:///:memory:",
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base.metadata.create_all(bind=engine)
+from tests.conftest import IMG
 
 
-def _override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def test_analyze_without_save_does_not_touch_history(client, auth):
+    r = client.post("/api/v1/predictions", files=IMG, headers=auth)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["sign"] in {"BONJOUR", "MERCI", "OUI", "NON", "AIDE"}
+    assert body["saved"] is False
+    assert client.get("/api/v1/predictions", headers=auth).json()["total"] == 0
 
 
-app.dependency_overrides[get_db] = _override_get_db
+def test_analyze_with_save_and_delete(client, auth):
+    r = client.post("/api/v1/predictions?save=true", files=IMG, headers=auth)
+    assert r.status_code == 200 and r.json()["saved"] is True
+    hist = client.get("/api/v1/predictions", headers=auth).json()
+    assert hist["total"] == 1
+    pid = hist["items"][0]["id"]
+    assert client.delete(f"/api/v1/predictions/{pid}", headers=auth).status_code == 204
+    assert client.get("/api/v1/predictions", headers=auth).json()["total"] == 0
 
-client = TestClient(app)
 
-
-def test_health_check():
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json()["status"] == "ok"
-
-
-def test_create_prediction_returns_mocked_result():
-    response = client.post(
+def test_rejects_bad_media_type(client, auth):
+    r = client.post(
         "/api/v1/predictions",
-        json={"image_base64": "ZmFrZV9pbWFnZQ==", "session_id": "test-session"},
+        files={"file": ("x.txt", b"hello", "text/plain")},
+        headers=auth,
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert "sign" in data
-    assert 0.0 <= data["confidence"] <= 1.0
-    assert data["mocked"] is True
+    assert r.status_code == 415
 
 
-def test_prediction_is_persisted_in_database():
-    """Vérifie que la prédiction est bien enregistrée, pas seulement renvoyée."""
-    response = client.post(
-        "/api/v1/predictions",
-        json={"image_base64": "ZmFrZQ=="},
-    )
-    assert response.status_code == 200
+def test_free_quota_then_premium_unlocks(client, auth):
+    for _ in range(3):
+        assert client.post("/api/v1/predictions", files=IMG, headers=auth).status_code == 200
+    blocked = client.post("/api/v1/predictions", files=IMG, headers=auth)
+    assert blocked.status_code == 429
+    assert blocked.json()["detail"]["code"] == "quota_exceeded"
 
-    db = TestingSessionLocal()
-    try:
-        count = db.query(db_models.Prediction).count()
-        assert count >= 1
-    finally:
-        db.close()
+    sub = client.post("/api/v1/subscriptions/dev/activate", headers=auth)
+    assert sub.status_code == 200 and sub.json()["plan"] == "premium"
+    assert client.post("/api/v1/predictions", files=IMG, headers=auth).status_code == 200
 
 
-def test_list_predictions_returns_history():
-    """Vérifie que GET /api/v1/predictions renvoie bien l'historique créé."""
-    client.post("/api/v1/predictions", json={"image_base64": "ZmFrZQ=="})
-    client.post("/api/v1/predictions", json={"image_base64": "ZmFrZQ=="})
-
-    response = client.get("/api/v1/predictions")
-    assert response.status_code == 200
-    data = response.json()
-    assert isinstance(data, list)
-    assert len(data) >= 2
-    assert "sign" in data[0]
-    assert "created_at" in data[0]
+def test_free_history_is_capped_premium_is_not(client, auth):
+    for _ in range(4):
+        client.post("/api/v1/predictions?save=true", files=IMG, headers=auth)
+    # le plan gratuit du test autorise 3 analyses/jour : la 4e n'est pas enregistrée
+    free = client.get("/api/v1/predictions", headers=auth).json()
+    assert free["total"] == 2 and len(free["items"]) == 2 and free["limited"] is True
+    client.post("/api/v1/subscriptions/dev/activate", headers=auth)
+    full = client.get("/api/v1/predictions", headers=auth).json()
+    assert full["total"] == 3 and full["limited"] is False
