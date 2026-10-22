@@ -36,3 +36,12 @@ def test_prediction_rejects_invalid_request():
     )
 
     assert response.status_code == 422
+
+
+def test_prediction_openapi_documents_503_not_200():
+    operation = app.openapi()["paths"]["/api/v1/predictions"]["post"]
+    responses = operation["responses"]
+
+    assert "503" in responses
+    assert "422" in responses
+    assert "200" not in responses

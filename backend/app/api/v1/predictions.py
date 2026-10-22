@@ -6,21 +6,21 @@ n'est pas disponible. Le contrat de requête existant est conservé.
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.models.prediction import PredictionRequest, PredictionResponse
+from app.models.prediction import PredictionRequest
 
 router = APIRouter(prefix="/api/v1", tags=["predictions"])
 
 
 @router.post(
     "/predictions",
-    response_model=PredictionResponse,
+    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
     responses={
         503: {
             "description": "Service de reconnaissance IA indisponible."
         }
     },
 )
-async def create_prediction(payload: PredictionRequest) -> PredictionResponse:
+async def create_prediction(payload: PredictionRequest) -> dict:
     """Refuse explicitement la prédiction si le service IA n'est pas intégré."""
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
