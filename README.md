@@ -6,7 +6,7 @@ Application mobile + Intelligence artificielle + Dispositif connecté pour facil
 
 🚧 **Phase actuelle : M1 — Architecture, GitHub et environnements** (voir [docs/architecture.md](docs/architecture.md))
 
-Le backend expose pour l'instant un contrat **mocké** : `POST /api/v1/predictions` retourne un signe aléatoire parmi une liste temporaire, en attendant le modèle IA (ticket EK-012 et suivants).
+L'endpoint `POST /api/v1/predictions` conserve son contrat de requête, mais renvoie actuellement `503 Service Unavailable` tant que le service de reconnaissance IA réel n'est pas intégré. Aucune prédiction fictive n'est renvoyée.
 
 ## Structure du dépôt
 
