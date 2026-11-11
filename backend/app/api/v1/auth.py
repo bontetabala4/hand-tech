@@ -2,7 +2,6 @@
 
 from typing import Any
 
-import requests
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from google.auth.exceptions import GoogleAuthError, TransportError
