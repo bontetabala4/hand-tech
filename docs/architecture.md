@@ -3,61 +3,89 @@
 ## Périmètre et principes
 
 Hand Tech vise à faciliter la communication entre personnes sourdes ou
-malentendantes et personnes entendantes, dans le contexte congolais.
+malentendantes et personnes entendantes dans le contexte congolais.
 
 - Langue cible : langue des signes congolaise (LSC).
 - Premier produit : application mobile Flutter.
 - Périmètre du Tech Lead : backend et base de données.
-- Le frontend mobile existant doit rester intact sans décision explicite de
-  coordination avec l'équipe mobile.
+- Le frontend mobile existant reste intact sans décision explicite de coordination.
 - Aucune reconnaissance ne doit être simulée : pas de signe aléatoire, de score
-  de confiance fictif, de dataset inventé ni de modèle fictif.
-- Une reconnaissance ne pourra être annoncée comme fonctionnelle qu'après
-  intégration et validation d'un véritable modèle LSC sur des données autorisées
-  et représentatives.
+  fictif, de dataset inventé ni de modèle fictif.
 
-## État réel du dépôt
+## État réel du backend
 
-- Backend FastAPI initialisé.
-- Route de contrôle `GET /health`.
-- Squelette d'authentification Google ID Token côté backend :
-  `GET /api/v1/auth/me`.
-- La vérification Google nécessite la configuration de `GOOGLE_CLIENT_ID`.
-- Les tests automatisés de l'authentification utilisent actuellement une
-  vérification simulée par monkeypatch ; ils ne constituent pas une validation
-  avec un véritable jeton Google.
-- PostgreSQL et Docker Compose sont présents dans le dépôt, mais le schéma
-  applicatif, les modèles de données et les migrations doivent encore être
-  audités et construits.
-- Aucun flux vidéo caméra n'est encore connecté au backend.
+- FastAPI avec authentification Google ID Token côté backend.
+- PostgreSQL avec SQLAlchemy et migrations Alembic.
+- Modèle utilisateur lié au claim Google `sub` vérifié.
+- Historique textuel privé : source, traduction, langues et date.
+- Routes de création, consultation paginée et suppression de l'historique.
+- Les vidéos et images caméra ne sont pas stockées dans PostgreSQL.
 - Aucun moteur ou modèle de reconnaissance LSC n'est intégré.
-- Aucun endpoint de prédiction n'est exposé actuellement.
+- Aucun flux vidéo caméra n'est encore connecté au backend.
 
-## Architecture cible à concevoir
+Les tests d'authentification actuels remplacent la vérification Google par un
+mock au niveau du test. Ils ne prouvent pas encore l'intégration avec un véritable
+jeton Google. Le client mobile doit envoyer l'ID Token dans l'en-tête
+`Authorization: Bearer <id_token>` pour appeler les routes privées.
+
+## Données et règles de confidentialité
+
+### `users`
+
+- Identifiant interne UUID.
+- `google_sub` : identifiant externe Google stable, unique et vérifié.
+- Email et indicateur de vérification, issus des claims vérifiés.
+- Dates de création et de mise à jour.
+
+### `translation_history`
+
+- Identifiant interne UUID.
+- Référence à l'utilisateur propriétaire avec suppression en cascade.
+- Texte source et texte traduit (5 000 caractères maximum chacun à l'API).
+- Langue source, langue cible et date de création.
+
+Chaque lecture et suppression filtre par l'utilisateur authentifié. Un utilisateur
+ne peut donc pas consulter ni supprimer les entrées d'un autre utilisateur via
+les routes prévues. L'utilisateur peut supprimer une entrée ou tout son historique.
+
+Aucune vidéo, image, séquence brute, donnée biométrique ou score de reconnaissance
+n'est enregistrée dans ces tables. La durée de conservation et les mécanismes
+d'export devront être définis avant la mise en production.
+
+## Architecture cible de reconnaissance
 
 Le flux visé est une capture vidéo continue depuis Flutter, un transport média
 adapté, un traitement temporel par un véritable moteur de reconnaissance LSC,
 puis le retour progressif du texte reconnu vers l'application.
 
-Les responsabilités envisagées sont :
-
 1. **Flutter** : capture et affichage caméra, gestion de l'interface et réception
    des résultats.
 2. **Backend FastAPI** : authentification, autorisation, gestion des sessions,
    orchestration et accès aux données.
-3. **Transport média** : mécanisme à choisir pour acheminer le flux vidéo.
-4. **Moteur de reconnaissance** : composant réel, versionné et évalué, capable
-   d'analyser des séquences temporelles de LSC.
+3. **Transport média** : mécanisme à choisir avec l'équipe mobile.
+4. **Moteur de reconnaissance** : composant réel, versionné et évalué sur des
+   données LSC autorisées et représentatives.
 5. **Canal de résultats** : mécanisme à choisir pour transmettre les résultats
    partiels et finaux.
-6. **PostgreSQL** : données de compte, sessions et métadonnées autorisées par la
-   politique de confidentialité.
+6. **PostgreSQL** : comptes, historique textuel et métadonnées autorisées.
 
-WebRTC et WebSocket sont des options à évaluer, pas des décisions déjà validées.
-Aucun contrat de streaming ne doit être considéré comme définitif avant accord
-avec l'équipe mobile et validation technique.
+WebRTC et WebSocket sont des options à évaluer, pas des décisions validées.
+Les paramètres vidéo, le contrat d'événements, la latence et la reconnexion
+restent à définir avec l'équipe mobile et l'équipe IA.
 
-## Décisions techniques à prendre avant le streaming
+## Migrations et commandes
+
+Depuis le dossier `backend` (dans le conteneur ou un environnement ayant accès
+à PostgreSQL) :
+
+- Appliquer : `alembic upgrade head`
+- Créer une migration après modification des modèles :
+  `alembic revision --autogenerate -m "description"`
+- Revenir à la migration précédente : `alembic downgrade -1`
+
+Les migrations doivent être relues avant application sur une base de production.
+
+## Décisions techniques encore ouvertes
 
 - Transport vidéo et protocole de retour des événements.
 - Format, codec, résolution et fréquence d'images.
@@ -65,41 +93,9 @@ avec l'équipe mobile et validation technique.
 - Schéma des événements partiels, finaux, incertains et sans signe détecté.
 - Authentification du canal média et renouvellement des jetons.
 - Reconnexion, contrôle de flux, latence et gestion des erreurs.
-- Politique de conservation, stockage et suppression des vidéos.
+- Politique de conservation des médias et consentement.
 - Interface entre backend et moteur IA.
-- Mesures de performance et protocole d'évaluation du modèle LSC.
+- Mesures de performance et protocole d'évaluation LSC.
 
-Ces paramètres ne doivent pas être inventés : ils seront définis avec les
+Ces paramètres ne doivent pas être inventés : ils seront définis à partir des
 contraintes réelles du frontend, du modèle et de l'infrastructure.
-
-## Sécurité et confidentialité
-
-- Vérifier côté serveur les ID Tokens Google : signature, émetteur, expiration
-  et audience.
-- Utiliser le claim Google `sub` vérifié comme identifiant externe stable.
-- Ne jamais faire confiance à un email ou identifiant utilisateur fourni
-  librement par le client.
-- Ne jamais embarquer de secrets backend ou de clés de fournisseur IA dans
-  l'application Flutter.
-- Ne pas conserver de vidéo ou d'image brute sans décision explicite de
-  confidentialité, de durée de conservation et de consentement.
-
-## Base de données
-
-PostgreSQL est prévu pour les données structurées. Le schéma et les migrations
-Alembic restent à mettre en place après validation des entités et des règles de
-conservation. Les médias bruts et artefacts de modèles ne doivent pas être
-stockés dans des colonnes relationnelles sans décision d'architecture dédiée.
-
-## Historique des décisions
-
-| Sujet | État |
-|---|---|
-| Backend | FastAPI / Python |
-| Base de données cible | PostgreSQL |
-| Langue cible | LSC |
-| Premier produit | Application mobile |
-| Reconnaissance vidéo réelle | Non intégrée |
-| Transport vidéo | À décider |
-| Canal de résultats progressifs | À décider |
-| Modèle et dataset LSC | À fournir, intégrer et évaluer |
