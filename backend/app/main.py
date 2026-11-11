@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 
-from app.api.v1 import predictions
+from app.api.v1 import auth, predictions
 from app.core.config import settings
 
 app = FastAPI(
@@ -12,6 +12,7 @@ app = FastAPI(
 )
 
 app.include_router(predictions.router)
+app.include_router(auth.router)
 
 
 @app.get("/health", tags=["monitoring"])
