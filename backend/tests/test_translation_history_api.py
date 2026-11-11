@@ -6,7 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.api.v1 import auth
+from app.api.v1 import auth, translations
+from sqlalchemy.exc import OperationalError
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
@@ -63,6 +64,21 @@ def create_entry(client: TestClient, user: str, phrase: str):
             "target_language": "fr",
         },
     )
+
+
+def test_database_errors_return_safe_service_unavailable_response(api_client, monkeypatch):
+    def fail_commit(db):
+        raise OperationalError("INSERT", {}, Exception("sensitive database detail"))
+
+    monkeypatch.setattr(translations, "_commit", fail_commit)
+
+    response = create_entry(api_client, "google-user-a", "Bonjour")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "Le service de données est temporairement indisponible."
+    }
+    assert "sensitive database detail" not in response.text
 
 
 def test_user_can_create_list_and_delete_own_history(api_client):
