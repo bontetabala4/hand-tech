@@ -2,16 +2,18 @@
 
 from fastapi import FastAPI
 
-from app.api.v1 import auth, predictions
+from app.api.v1 import auth
 from app.core.config import settings
 
 app = FastAPI(
     title=settings.app_name,
     version="0.1.0",
-    description="API backend du projet Hand Tech — reconnaissance de la langue des signes.",
+    description=(
+        "API backend de Hand Tech. "
+        "La reconnaissance de la langue des signes n'est pas encore intégrée."
+    ),
 )
 
-app.include_router(predictions.router)
 app.include_router(auth.router)
 
 
