@@ -21,9 +21,13 @@ SessionLocal = sessionmaker(
 
 
 def get_db() -> Generator[Session, None, None]:
-    """Fournit une session DB et la ferme systématiquement après la requête."""
+    """Fournit une session DB et nettoie toute transaction interrompue."""
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        # Évite de laisser une transaction en échec dans la session.
+        db.rollback()
+        raise
     finally:
         db.close()
