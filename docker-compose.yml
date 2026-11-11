@@ -35,7 +35,7 @@ services:
       - handtech-network
 
   libretranslate:
-    image: libretranslate/libretranslate:latest
+    image: libretranslate/libretranslate:v1.9.6
     container_name: handtech-libretranslate
     restart: unless-stopped
     environment:
