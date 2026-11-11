@@ -19,9 +19,32 @@ malentendantes et personnes entendantes dans le contexte congolais.
 - Modèle utilisateur lié au claim Google `sub` vérifié.
 - Historique textuel privé : source, traduction, langues et date.
 - Routes de création, consultation paginée et suppression de l'historique.
+- Route `POST /translate` compatible avec le contrat Flutter et connectée à
+  LibreTranslate par configuration serveur.
 - Les vidéos et images caméra ne sont pas stockées dans PostgreSQL.
 - Aucun moteur ou modèle de reconnaissance LSC n'est intégré.
 - Aucun flux vidéo caméra n'est encore connecté au backend.
+
+### Service de traduction textuelle
+
+Le client Flutter envoie `q`, `source`, `target` et `format=text`, puis
+attend `translatedText`. Le backend conserve ce contrat et délègue le traitement
+à LibreTranslate via `LIBRETRANSLATE_URL`. Une clé facultative peut être fournie
+avec `LIBRETRANSLATE_API_KEY`. Le délai est configurable par
+`TRANSLATION_TIMEOUT_SECONDS`.
+
+Les langues actuellement acceptées sont de, en, es, fr, it et pt. La taille du
+texte est limitée à 5 000 caractères. Si le fournisseur est absent, indisponible,
+renvoie un statut HTTP en erreur ou une réponse invalide, le backend renvoie une
+erreur 503 sans exposer les détails internes ni inventer de résultat.
+
+Pour Flutter Web, les origines autorisées sont configurées explicitement dans
+`CORS_ALLOWED_ORIGINS`. Les origines de production doivent être les domaines
+réels de l'application ; aucune origine universelle n'est autorisée par défaut.
+
+Les tests de la route vérifient le contrat HTTP et les erreurs avec un fournisseur
+remplacé au niveau du test. Ils ne prouvent pas encore la disponibilité d'une
+instance LibreTranslate réelle.
 
 Les tests d'authentification actuels remplacent la vérification Google par un
 mock au niveau du test. Ils ne prouvent pas encore l'intégration avec un véritable
