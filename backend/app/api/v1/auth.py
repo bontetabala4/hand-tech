@@ -5,7 +5,7 @@ from typing import Any
 import requests
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from google.auth.exceptions import GoogleAuthError
+from google.auth.exceptions import GoogleAuthError, TransportError
 from google.auth.transport.requests import Request
 from google.oauth2 import id_token
 
@@ -46,16 +46,16 @@ async def get_current_google_user(
             credentials.credentials,
             settings.google_client_id,
         )
+    except TransportError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Le service de vérification Google est temporairement inaccessible.",
+        ) from None
     except (ValueError, GoogleAuthError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Google ID Token invalide ou expiré.",
             headers={"WWW-Authenticate": "Bearer"},
-        ) from None
-    except requests.exceptions.RequestException:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Le service de vérification Google est temporairement inaccessible.",
         ) from None
 
     subject = claims.get("sub")
