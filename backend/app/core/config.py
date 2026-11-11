@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql://handtech:handtech@db:5432/handtech"
     ai_service_url: str = "http://ai-service:8001"
+    google_client_id: str | None = None
 
     class Config:
         env_file = ".env"
