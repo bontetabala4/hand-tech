@@ -53,7 +53,7 @@ hand-tech/
 ```bash
 cp .env.example .env
 docker compose up -d db
-docker compose run --rm backend alembic upgrade head
+docker compose run --build --rm backend alembic upgrade head
 docker compose up -d backend
 ```
 
