@@ -52,17 +52,21 @@ def auth_headers(user_token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {user_token}"}
 
 
-def test_user_can_create_list_and_delete_own_history(api_client):
-    created = api_client.post(
+def create_entry(client: TestClient, user: str, phrase: str):
+    return client.post(
         "/api/v1/translations",
-        headers=auth_headers("google-user-a"),
+        headers=auth_headers(user),
         json={
-            "source_text": "Bonjour",
-            "translated_text": "Hello",
+            "source_text": phrase,
+            "translated_text": phrase,
             "source_language": "fr",
-            "target_language": "en",
+            "target_language": "fr",
         },
     )
+
+
+def test_user_can_create_list_and_delete_own_history(api_client):
+    created = create_entry(api_client, "google-user-a", "Bonjour")
     assert created.status_code == 201
     entry_id = created.json()["id"]
 
@@ -87,16 +91,7 @@ def test_user_can_create_list_and_delete_own_history(api_client):
 
 
 def test_users_cannot_read_or_delete_another_users_history(api_client):
-    created = api_client.post(
-        "/api/v1/translations",
-        headers=auth_headers("google-user-a"),
-        json={
-            "source_text": "Bonjour",
-            "translated_text": "Hello",
-            "source_language": "fr",
-            "target_language": "en",
-        },
-    )
+    created = create_entry(api_client, "google-user-a", "Bonjour")
     entry_id = created.json()["id"]
 
     other_user_history = api_client.get(
@@ -112,25 +107,22 @@ def test_users_cannot_read_or_delete_another_users_history(api_client):
     assert forbidden_delete.status_code == 404
 
 
-def test_user_can_delete_all_own_history(api_client):
-    for phrase in ("Bonjour", "Merci"):
-        response = api_client.post(
-            "/api/v1/translations",
-            headers=auth_headers("google-user-a"),
-            json={
-                "source_text": phrase,
-                "translated_text": phrase,
-                "source_language": "fr",
-                "target_language": "fr",
-            },
-        )
-        assert response.status_code == 201
+def test_user_can_delete_all_own_history_without_affecting_others(api_client):
+    assert create_entry(api_client, "google-user-a", "Bonjour").status_code == 201
+    assert create_entry(api_client, "google-user-a", "Merci").status_code == 201
+    assert create_entry(api_client, "google-user-b", "Hello").status_code == 201
 
     deleted = api_client.delete(
         "/api/v1/translations", headers=auth_headers("google-user-a")
     )
     assert deleted.status_code == 204
-    listed = api_client.get(
+
+    user_a_history = api_client.get(
         "/api/v1/translations", headers=auth_headers("google-user-a")
     )
-    assert listed.json() == []
+    user_b_history = api_client.get(
+        "/api/v1/translations", headers=auth_headers("google-user-b")
+    )
+    assert user_a_history.json() == []
+    assert len(user_b_history.json()) == 1
+    assert user_b_history.json()[0]["source_text"] == "Hello"
