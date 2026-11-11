@@ -4,7 +4,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import delete, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.api.v1.auth import get_current_google_user
@@ -14,6 +14,15 @@ from app.models.user import User
 from app.schemas.translation import TranslationHistoryCreate, TranslationHistoryRead
 
 router = APIRouter(prefix="/api/v1/translations", tags=["translation history"])
+
+
+def _commit(db: Session) -> None:
+    """Valide une transaction ou la remet proprement à zéro en cas d'échec."""
+    try:
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise
 
 
 def _get_or_create_user(db: Session, claims: dict) -> User:
@@ -27,20 +36,31 @@ def _get_or_create_user(db: Session, claims: dict) -> User:
         )
         db.add(user)
         try:
-            db.commit()
+            _commit(db)
         except IntegrityError:
             # Deux requêtes simultanées peuvent tenter de créer le même compte.
-            db.rollback()
             user = db.scalar(select(User).where(User.google_sub == claims["sub"]))
             if user is None:
                 raise
         else:
             db.refresh(user)
     else:
-        user.email = claims.get("email")
-        user.email_verified = claims.get("email_verified") is True
-        db.commit()
-        db.refresh(user)
+        # Une lecture ne doit pas provoquer une écriture si le profil n'a pas changé.
+        token_email = claims.get("email")
+        token_email_verified = claims.get("email_verified") is True
+        changed = False
+
+        if token_email is not None and user.email != token_email:
+            user.email = token_email
+            changed = True
+        if user.email_verified != token_email_verified:
+            user.email_verified = token_email_verified
+            changed = True
+
+        if changed:
+            _commit(db)
+            db.refresh(user)
+
     return user
 
 
@@ -57,7 +77,7 @@ def create_translation_history(
     user = _get_or_create_user(db, claims)
     entry = TranslationHistory(user_id=user.id, **payload.model_dump())
     db.add(entry)
-    db.commit()
+    _commit(db)
     db.refresh(entry)
     return entry
 
@@ -96,7 +116,7 @@ def delete_translation_history_entry(
     if entry is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Traduction introuvable.")
     db.delete(entry)
-    db.commit()
+    _commit(db)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -109,5 +129,5 @@ def delete_all_translation_history(
     db.execute(
         delete(TranslationHistory).where(TranslationHistory.user_id == user.id)
     )
-    db.commit()
+    _commit(db)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
