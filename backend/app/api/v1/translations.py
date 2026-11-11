@@ -3,7 +3,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -29,6 +29,7 @@ def _get_or_create_user(db: Session, claims: dict) -> User:
         try:
             db.commit()
         except IntegrityError:
+            # Deux requêtes simultanées peuvent tenter de créer le même compte.
             db.rollback()
             user = db.scalar(select(User).where(User.google_sub == claims["sub"]))
             if user is None:
@@ -105,10 +106,8 @@ def delete_all_translation_history(
     db: Session = Depends(get_db),
 ) -> Response:
     user = _get_or_create_user(db, claims)
-    entries = db.scalars(
-        select(TranslationHistory).where(TranslationHistory.user_id == user.id)
-    ).all()
-    for entry in entries:
-        db.delete(entry)
+    db.execute(
+        delete(TranslationHistory).where(TranslationHistory.user_id == user.id)
+    )
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
