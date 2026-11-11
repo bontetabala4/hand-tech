@@ -3,10 +3,11 @@
 import logging
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api.v1 import auth, translations
+from app.api.v1 import auth, translate, translations
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,15 @@ app = FastAPI(
         "La reconnaissance de la langue des signes n'est pas encore intégrée."
     ),
 )
+
+if settings.cors_allowed_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_allowed_origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization"],
+    )
 
 
 @app.exception_handler(SQLAlchemyError)
@@ -37,6 +47,7 @@ async def database_error_handler(
 
 app.include_router(auth.router)
 app.include_router(translations.router)
+app.include_router(translate.router)
 
 
 @app.get("/health", tags=["monitoring"])
